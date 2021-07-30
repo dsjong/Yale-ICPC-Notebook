@@ -1,66 +1,57 @@
 /**
- * Author: Simon Lindholm
- * Date: 2016-10-08
- * License: CC0
- * Source: me
+ * Author: Dion Ong
+ * Source: KACTL
  * Description: Segment tree with ability to add or set values of large intervals, and compute max of intervals.
- * Can be changed to other things.
- * Use with a bump allocator for better performance, and SmallPtr or implicit indices to save memory.
+ * Can be changed to other things (modify T, unit, f, and push).
  * Time: O(\log N).
- * Usage: Node* tr = new Node(v, 0, sz(v));
- * Status: stress-tested a bit
+ * Usage: Node* tr = new Node(L, R);
+ * Node **tr = new Node*[MAXN]; //array of segtrees
+ * for(int i=0; i<MAXN; i++) tr[i] = new Node(L, R);
+ * Status: tested on napc21.icecreamcones, KACTL stress tests.
  */
-#pragma once
-
-#include "../various/BumpAllocator.h"
-
-const int inf = 1e9;
-struct Node {
-	Node *l = 0, *r = 0;
-	int lo, hi, mset = inf, madd = 0, val = -inf;
-	Node(int lo,int hi):lo(lo),hi(hi){} // Large interval of -inf
-	Node(vi& v, int lo, int hi) : lo(lo), hi(hi) {
-		if (lo + 1 < hi) {
-			int mid = lo + (hi - lo)/2;
-			l = new Node(v, lo, mid); r = new Node(v, mid, hi);
-			val = max(l->val, r->val);
-		}
-		else val = v[lo];
-	}
-	int query(int L, int R) {
-		if (R <= lo || hi <= L) return -inf;
-		if (L <= lo && hi <= R) return val;
-		push();
-		return max(l->query(L, R), r->query(L, R));
-	}
-	void set(int L, int R, int x) {
-		if (R <= lo || hi <= L) return;
-		if (L <= lo && hi <= R) mset = val = x, madd = 0;
-		else {
-			push(), l->set(L, R, x), r->set(L, R, x);
-			val = max(l->val, r->val);
-		}
-	}
-	void add(int L, int R, int x) {
-		if (R <= lo || hi <= L) return;
-		if (L <= lo && hi <= R) {
-			if (mset != inf) mset += x;
-			else madd += x;
-			val += x;
-		}
-		else {
-			push(), l->add(L, R, x), r->add(L, R, x);
-			val = max(l->val, r->val);
-		}
-	}
-	void push() {
-		if (!l) {
-			int mid = lo + (hi - lo)/2;
-			l = new Node(lo, mid); r = new Node(mid, hi);
-		}
-		if (mset != inf)
-			l->set(lo,hi,mset), r->set(lo,hi,mset), mset = inf;
-		else if (madd)
-			l->add(lo,hi,madd), r->add(lo,hi,madd), madd = 0;
-	}
+struct Node{
+    typedef int T;
+    static constexpr T unset = INT_MIN, unit=0;
+    T f(T a, T b) { return max(a, b); }
+    T mset=unset, madd=0, val=unit; int lo, hi;
+    Node *l=0, *r=0;
+    Node(int lo, int hi): lo(lo), hi(hi){
+        if(lo<hi){
+            int mid=(lo+hi)/2;
+            l=new Node(lo, mid); r=new Node(mid+1, hi);
+        }
+    }
+    T query(int L, int R){
+        if(L>R) return unit;
+        push();
+        if(R<lo || hi<L) return unit; //sentinel
+        if(L<=lo && hi<=R) return val;
+        return f(l->query(L, R), r->query(L, R));
+    }
+    void set(int L, int R, T x, int t=1){
+        if(L>R) return;
+        push();
+        if(R<lo || hi<L) return;
+        if(L<=lo && hi<=R){
+            (t==1 ? mset : madd)=x;
+            push(); return;
+        }
+        l->set(L, R, x, t), r->set(L, R, x, t);
+        val=f(l->val, r->val);
+    }
+    void add(int L, int R, T x) { return set(L, R, x, 0); }
+    void push(){
+        mset!=unset ? val=mset : val+=madd; //mult (hi-lo+1) to BOTH for sum query
+        if(l){ //if parent, push down
+            if(mset!=unset){
+                l->mset=r->mset=mset;
+                l->madd=r->madd=0;
+            }
+            else if(madd){
+                l->mset!=unset ? l->mset+=madd : l->madd+=madd;
+                r->mset!=unset ? r->mset+=madd : r->madd+=madd;
+            }
+        }
+        mset=unset, madd=0;
+    }
 };

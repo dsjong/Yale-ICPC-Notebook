@@ -9,7 +9,7 @@
  * support commutative segtree modifications/queries on paths and subtrees.
  * Takes as input the full adjacency list. VALS\_EDGES being true means that
  * values are stored in the edges, as opposed to the nodes. All values
- * initialized to the segtree default. Root must be 0.
+ * initialized to the segtree default. Root must be 1.
  * Time: O((\log N)^2)
  * Status: stress-tested against old HLD
  */
@@ -24,7 +24,7 @@ template <bool VALS_EDGES> struct HLD {
 	Node *tree;
 	HLD(vector<vi> adj_)
 		: N(sz(adj_)), adj(adj_), par(N, -1), siz(N, 1), depth(N),
-		  rt(N),pos(N),tree(new Node(0, N)){ dfsSz(0); dfsHld(0); }
+		  rt(N),pos(N),tree(new Node(0, N)){ dfsSz(1); dfsHld(1); }
 	void dfsSz(int v) {
 		if (par[v] != -1) adj[v].erase(find(all(adj[v]), par[v]));
 		for (int& u : adj[v]) {
@@ -44,10 +44,10 @@ template <bool VALS_EDGES> struct HLD {
 	template <class B> void process(int u, int v, B op) {
 		for (; rt[u] != rt[v]; v = par[rt[v]]) {
 			if (depth[rt[u]] > depth[rt[v]]) swap(u, v);
-			op(pos[rt[v]], pos[v] + 1);
+			op(pos[rt[v]], pos[v]);
 		}
 		if (depth[u] > depth[v]) swap(u, v);
-		op(pos[u] + VALS_EDGES, pos[v] + 1);
+		op(pos[u] + VALS_EDGES, pos[v]);
 	}
 	void modifyPath(int u, int v, int val) {
 		process(u, v, [&](int l, int r) { tree->add(l, r, val); });
